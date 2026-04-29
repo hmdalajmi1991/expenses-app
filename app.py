@@ -81,8 +81,8 @@ if show:
     data = {}
 
     for i in range(len(expenses_list)):
-    cat = categories_list[i]
-    val = expenses_list[i]
+        cat = categories_list[i]
+        val = expenses_list[i]
 
     if cat in data:
         data[cat] += val
