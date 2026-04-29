@@ -1,37 +1,21 @@
 import streamlit as st
+import pandas as pd
 
 st.set_page_config(page_title="مصاريفي", page_icon="💰")
 
 st.title("💰 مصاريفي")
 st.write("سجل مصاريفك وشوف وضع ميزانيتك")
 
+# إدخال البيانات
 budget = st.number_input("💵 كم ميزانيتك؟", min_value=0.0)
-
 expense = st.number_input("🧾 كم صرفت؟", min_value=0.0)
 
 category = st.selectbox(
     "📂 اختر التصنيف",
-    ["🍔 أكل", "☕ قهوة", "⛽ بنزين", "🛍️ تسوق", "🎮 ترفيه", "📦 أخرى"]
+    ["🍔 أكل", "☕ قهوة", "⛽ بنزين", "🛍️ تسوق", "🎮 ترفيه"]
 )
 
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    if st.button("➕ إضافة"):
-        file = open("expenses.txt", "a")
-        file.write(f"{category},{expense}\n")
-        file.close()
-        st.success("تمت الإضافة ✅")
-
-with col2:
-    show = st.button("📊 عرض")
-
-with col3:
-    if st.button("🗑️ مسح الكل"):
-        file = open("expenses.txt", "w")
-        file.close()
-        st.warning("تم مسح المصاريف")
-
+# قراءة البيانات من الملف
 expenses_list = []
 categories_list = []
 
@@ -41,58 +25,57 @@ try:
     file.close()
 
     for line in lines:
-        if line.strip() != "":
-            cat, val = line.strip().split(",")
-            categories_list.append(cat)
-            expenses_list.append(float(val))
+        parts = line.strip().split(",")
+        if len(parts) == 2:
+            categories_list.append(parts[0])
+            expenses_list.append(float(parts[1]))
 except:
     pass
 
-if len(expenses_list) > 0:
-    st.subheader("📋 المصاريف")
+# الأزرار
+col1, col2, col3 = st.columns(3)
 
-    for i in range(len(expenses_list)):
-        st.write(i + 1, "-", categories_list[i], ":", expenses_list[i])
-
-    delete_number = st.number_input(
-        "اكتب رقم المصروف للحذف",
-        min_value=1,
-        max_value=len(expenses_list),
-        step=1
-    )
-
-    if st.button("❌ حذف مصروف"):
-        expenses_list.pop(delete_number - 1)
-        categories_list.pop(delete_number - 1)
-
-        file = open("expenses.txt", "w")
-        for i in range(len(expenses_list)):
-            file.write(f"{categories_list[i]},{expenses_list[i]}\n")
+with col1:
+    if st.button("➕ إضافة"):
+        file = open("expenses.txt", "a")
+        file.write(f"{category},{expense}\n")
         file.close()
-
-        st.success("تم الحذف ✅")
+        st.success("تمت الإضافة ✅")
         st.rerun()
 
+with col2:
+    show = st.button("📊 عرض")
+
+with col3:
+    if st.button("🗑️ مسح الكل"):
+        file = open("expenses.txt", "w")
+        file.close()
+        st.warning("تم مسح كل المصاريف ❌")
+        st.rerun()
+
+# عرض النتائج
 if show:
     total = sum(expenses_list)
     remaining = budget - total
-    import pandas as pd
 
+    # الرسم البياني
     data = {}
 
     for i in range(len(expenses_list)):
         cat = categories_list[i]
         val = expenses_list[i]
 
-    if cat in data:
-        data[cat] += val
-    else:
-        data[cat] = val
+        if cat in data:
+            data[cat] += val
+        else:
+            data[cat] = val
 
-df = pd.DataFrame(list(data.items()), columns=["Category", "Amount"])
+    df = pd.DataFrame(list(data.items()), columns=["Category", "Amount"])
 
-st.subheader("📊 توزيع المصاريف")
-st.bar_chart(df.set_index("Category"))
+    st.subheader("📊 توزيع المصاريف")
+    st.bar_chart(df.set_index("Category"))
+
+    # النتائج
     st.subheader("📌 النتائج")
     st.metric("مجموع المصاريف", total)
     st.metric("الباقي", remaining)
@@ -103,8 +86,8 @@ st.bar_chart(df.set_index("Category"))
         st.write("نسبة الصرف:", int(percent), "%")
 
         if percent > 100:
-            st.error("❌ تعدّيت الميزانية!")
+            st.error("❌ تعديت الميزانية!")
         elif percent > 80:
             st.warning("⚠️ قربت تخلص الميزانية")
         else:
-            st.success("👍 وضعك ممتاز")
+            st.success("✅ وضعك ممتاز")
