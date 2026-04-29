@@ -76,7 +76,23 @@ if len(expenses_list) > 0:
 if show:
     total = sum(expenses_list)
     remaining = budget - total
+    import pandas as pd
 
+    data = {}
+
+    for i in range(len(expenses_list)):
+    cat = categories_list[i]
+    val = expenses_list[i]
+
+    if cat in data:
+        data[cat] += val
+    else:
+        data[cat] = val
+
+df = pd.DataFrame(list(data.items()), columns=["Category", "Amount"])
+
+st.subheader("📊 توزيع المصاريف")
+st.bar_chart(df.set_index("Category"))
     st.subheader("📌 النتائج")
     st.metric("مجموع المصاريف", total)
     st.metric("الباقي", remaining)
