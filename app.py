@@ -6,14 +6,20 @@ st.title("💰 مصاريفي")
 st.write("سجل مصاريفك وشوف وضع ميزانيتك")
 
 budget = st.number_input("💵 كم ميزانيتك؟", min_value=0.0)
+
 expense = st.number_input("🧾 كم صرفت؟", min_value=0.0)
+
+category = st.selectbox(
+    "📂 اختر التصنيف",
+    ["🍔 أكل", "☕ قهوة", "⛽ بنزين", "🛍️ تسوق", "🎮 ترفيه", "📦 أخرى"]
+)
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
     if st.button("➕ إضافة"):
         file = open("expenses.txt", "a")
-        file.write(str(expense) + "\n")
+        file.write(f"{category},{expense}\n")
         file.close()
         st.success("تمت الإضافة ✅")
 
@@ -26,28 +32,30 @@ with col3:
         file.close()
         st.warning("تم مسح المصاريف")
 
+expenses_list = []
+categories_list = []
+
 try:
     file = open("expenses.txt", "r")
-    numbers = file.readlines()
+    lines = file.readlines()
     file.close()
 
-    expenses_list = []
-
-    for n in numbers:
-        if n.strip() != "":
-            expenses_list.append(float(n.strip()))
-
+    for line in lines:
+        if line.strip() != "":
+            cat, val = line.strip().split(",")
+            categories_list.append(cat)
+            expenses_list.append(float(val))
 except:
-    expenses_list = []
+    pass
 
 if len(expenses_list) > 0:
-    st.subheader("📋 المصاريف المسجلة")
+    st.subheader("📋 المصاريف")
 
-    for index, value in enumerate(expenses_list):
-        st.write(index + 1, "-", value)
+    for i in range(len(expenses_list)):
+        st.write(i + 1, "-", categories_list[i], ":", expenses_list[i])
 
     delete_number = st.number_input(
-        "اكتب رقم المصروف اللي تبي تحذفه",
+        "اكتب رقم المصروف للحذف",
         min_value=1,
         max_value=len(expenses_list),
         step=1
@@ -55,13 +63,14 @@ if len(expenses_list) > 0:
 
     if st.button("❌ حذف مصروف"):
         expenses_list.pop(delete_number - 1)
+        categories_list.pop(delete_number - 1)
 
         file = open("expenses.txt", "w")
-        for item in expenses_list:
-            file.write(str(item) + "\n")
+        for i in range(len(expenses_list)):
+            file.write(f"{categories_list[i]},{expenses_list[i]}\n")
         file.close()
 
-        st.success("تم حذف المصروف ✅")
+        st.success("تم الحذف ✅")
         st.rerun()
 
 if show:
