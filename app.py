@@ -14,10 +14,7 @@ def extract(patterns, text):
             return m.group(1).strip()
     return ""
 
-area = extract([
-    r"(الصباحية|صباحية|المهبولة|مهبولة|Mehabulla|Mahboula|Sabahiya|Sabahiyah)"
-], raw_text)
-
+# 🔥 سحب ذكي بدون تحديد منطقة
 block = extract([
     r"(?:ق|قطعة)\s*[-:]?\s*([0-9٠-٩]+)",
     r"(?:Block)\s*[-:]?\s*([0-9]+)"
@@ -50,7 +47,7 @@ unit = extract([
 
 st.subheader("✏️ راجع وعدّل البيانات")
 
-area = st.text_input("المنطقة", area)
+area = st.text_input("المنطقة (اكتبها يدوي)", "")
 block = st.text_input("القطعة", block)
 street = st.text_input("الشارع", street)
 house = st.text_input("المنزل / المبنى / القسيمة", house)
@@ -60,7 +57,6 @@ trans = st.text_input("الترنس", trans)
 unit = st.text_input("اليونت", unit)
 
 work = st.text_area("🛠️ الأعمال المنجزة")
-current_status = st.text_area("❗ الوضع الحالي")
 materials = st.text_area("📦 المواد المطلوبة")
 note = st.text_area("📝 ملاحظة")
 
@@ -70,6 +66,7 @@ status = st.selectbox(
 )
 
 if st.button("📊 إنشاء التقرير الرسمي"):
+
     report = "📊 تقرير متابعة عطل\n"
     report += "━━━━━━━━━━━━━━━━━━\n\n"
 
@@ -81,9 +78,6 @@ if st.button("📊 إنشاء التقرير الرسمي"):
 
     report += "🛠️ الأعمال المنجزة:\n"
     report += f"{work}\n\n"
-
-    report += "❗ الوضع الحالي:\n"
-    report += f"{current_status}\n\n"
 
     report += "📦 المواد المطلوبة:\n"
     report += f"{materials}\n\n"
