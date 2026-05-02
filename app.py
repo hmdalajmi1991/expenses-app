@@ -14,7 +14,18 @@ def extract(patterns, text):
             return m.group(1).strip()
     return ""
 
-# 🔥 سحب ذكي بدون تحديد منطقة
+# 🔥 استخراج المنطقة (أول سطر أو أول كلمة)
+def extract_area(text):
+    lines = text.strip().split("\n")
+    if lines:
+        first_line = lines[0].strip()
+        # إذا السطر فيه كلمات إنجليزية أو عربية نخذه
+        if len(first_line.split()) <= 3:
+            return first_line
+    return ""
+
+area = extract_area(raw_text)
+
 block = extract([
     r"(?:ق|قطعة)\s*[-:]?\s*([0-9٠-٩]+)",
     r"(?:Block)\s*[-:]?\s*([0-9]+)"
@@ -47,7 +58,7 @@ unit = extract([
 
 st.subheader("✏️ راجع وعدّل البيانات")
 
-area = st.text_input("المنطقة (اكتبها يدوي)", "")
+area = st.text_input("المنطقة", area)
 block = st.text_input("القطعة", block)
 street = st.text_input("الشارع", street)
 house = st.text_input("المنزل / المبنى / القسيمة", house)
