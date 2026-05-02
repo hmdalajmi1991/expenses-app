@@ -1,102 +1,118 @@
 import streamlit as st
 import re
+from datetime import datetime
+import json
 
-st.set_page_config(page_title="مساعد تقرير الأعطال", page_icon="⚡")
+st.set_page_config(page_title="نظام الأعطال", page_icon="⚡")
 
-st.title("⚡ مساعد تقرير الأعطال")
+st.title("⚡ نظام تسجيل الأعطال (نسخة احترافية)")
 
-raw_text = st.text_area("📋 الصق رسالة الواتساب هنا", height=220)
+# ---------- قراءة البيانات ----------
+def load_data():
+    try:
+        with open("data.json", "r") as f:
+            return json.load(f)
+    except:
+        return []
 
-def extract(patterns, text):
-    for pattern in patterns:
-        m = re.search(pattern, text, re.IGNORECASE)
-        if m:
-            return m.group(1).strip()
-    return ""
+def save_data(data):
+    with open("data.json", "w") as f:
+        json.dump(data, f)
 
-# 🔥 استخراج المنطقة (أول سطر أو أول كلمة)
-def extract_area(text):
-    lines = text.strip().split("\n")
-    if lines:
-        first_line = lines[0].strip()
-        # إذا السطر فيه كلمات إنجليزية أو عربية نخذه
-        if len(first_line.split()) <= 3:
-            return first_line
-    return ""
+data = load_data()
 
-area = extract_area(raw_text)
+# ---------- استخراج المواد ----------
+def extract_materials(text):
+    results = []
 
-block = extract([
-    r"(?:ق|قطعة)\s*[-:]?\s*([0-9٠-٩]+)",
-    r"(?:Block)\s*[-:]?\s*([0-9]+)"
-], raw_text)
+    # كيابل (240 / 300 / 185 ...)
+    cable_matches = re.findall(r"(\d+)\s*متر.*?(240|300|185|150|120|95|70|35)", text)
+    for qty, size in cable_matches:
+        results.append({
+            "type": "كيبل",
+            "size": size,
+            "qty": int(qty)
+        })
 
-street = extract([
-    r"(?:ش|شارع)\s*[-:]?\s*([0-9٠-٩]+)",
-    r"(?:Street|St)\s*[-:]?\s*([0-9]+)"
-], raw_text)
+    # ستريت
+    if "ستريت" in text or "straight" in text.lower():
+        n = re.findall(r"(\d+)\s*(ستريت|straight)", text)
+        for x in n:
+            results.append({"type": "ستريت جوينت", "size": "-", "qty": int(x[0])})
 
-house = extract([
-    r"(?:قسيمه|قسيمة|منزل)\s*[-:]?\s*([0-9٠-٩]+)",
-    r"(?:Building|B|House)\s*[-:]?\s*([0-9\+]+)"
-], raw_text)
+    # تي جوينت
+    if "تي" in text or "t joint" in text.lower():
+        n = re.findall(r"(\d+)\s*(تي|t)", text)
+        for x in n:
+            results.append({"type": "تي جوينت", "size": "-", "qty": int(x[0])})
 
-station = extract([
-    r"(?:محطه|محطة)\s*[-:]?\s*([0-9٠-٩]+)",
-    r"(?:S/S|SS)\s*[-:]?\s*([0-9]+)"
-], raw_text)
+    # بوت
+    if "بوت" in text or "boot" in text.lower():
+        n = re.findall(r"(\d+)\s*(بوت|boot)", text)
+        for x in n:
+            results.append({"type": "بوت", "size": "-", "qty": int(x[0])})
 
-trans = extract([
-    r"(?:ترنس|ترانز)\s*[-:]?\s*([0-9٠-٩]+)",
-    r"(?:Trans)\s*[-:]?\s*([0-9]+)"
-], raw_text)
+    return results
 
-unit = extract([
-    r"(?:يونت|وحدة)\s*[-:]?\s*([0-9٠-٩]+)",
-    r"(?:Unit)\s*[-:]?\s*([0-9]+)"
-], raw_text)
+# ---------- إدخال بلاغ ----------
+st.subheader("➕ إضافة بلاغ")
 
-st.subheader("✏️ راجع وعدّل البيانات")
+raw_text = st.text_area("📋 الصق رسالة الواتساب")
 
-area = st.text_input("المنطقة", area)
-block = st.text_input("القطعة", block)
-street = st.text_input("الشارع", street)
-house = st.text_input("المنزل / المبنى / القسيمة", house)
+materials = extract_materials(raw_text)
 
-station = st.text_input("المحطة", station)
-trans = st.text_input("الترنس", trans)
-unit = st.text_input("اليونت", unit)
+edited_materials = []
 
-work = st.text_area("🛠️ الأعمال المنجزة")
-materials = st.text_area("📦 المواد المطلوبة")
-note = st.text_area("📝 ملاحظة")
+if materials:
+    st.write("🔍 المواد المقترحة (عدلها إذا فيها خطأ):")
 
-status = st.selectbox(
-    "الحالة",
-    ["يرجى المتابعة", "تم الانتهاء"]
-)
+    for i, m in enumerate(materials):
+        col1, col2, col3 = st.columns(3)
 
-if st.button("📊 إنشاء التقرير الرسمي"):
+        with col1:
+            t = st.text_input(f"نوع {i}", m["type"], key=f"type{i}")
+        with col2:
+            s = st.text_input(f"حجم {i}", m["size"], key=f"size{i}")
+        with col3:
+            q = st.number_input(f"كمية {i}", value=m["qty"], key=f"qty{i}")
 
-    report = "📊 تقرير متابعة عطل\n"
-    report += "━━━━━━━━━━━━━━━━━━\n\n"
+        edited_materials.append({"type": t, "size": s, "qty": q})
 
-    report += "📍 الموقع:\n"
-    report += f"{area} - قطعة {block} - شارع {street} - منزل/مبنى {house}\n\n"
+if st.button("💾 حفظ البلاغ"):
+    entry = {
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "text": raw_text,
+        "materials": edited_materials
+    }
+    data.append(entry)
+    save_data(data)
+    st.success("تم الحفظ ✅")
 
-    report += "⚡ بيانات المحطة:\n"
-    report += f"محطة {station} - ترنس {trans} - يونت {unit}\n\n"
+# ---------- تحليل الشهر ----------
+st.subheader("📊 تقرير شهري")
 
-    report += "🛠️ الأعمال المنجزة:\n"
-    report += f"{work}\n\n"
+month = st.text_input("اكتب رقم الشهر (مثال: 05)")
 
-    report += "📦 المواد المطلوبة:\n"
-    report += f"{materials}\n\n"
+if st.button("📈 تحليل الشهر"):
 
-    report += "📝 ملاحظة:\n"
-    report += f"{note}\n\n"
+    summary = {}
 
-    report += f"➡️ الحالة: {status}\n"
-    report += "━━━━━━━━━━━━━━━━━━"
+    for d in data:
+        if f"-{month}-" in d["date"]:
 
-    st.text_area("📋 انسخ التقرير", report, height=400)
+            for m in d["materials"]:
+                key = f"{m['type']} {m['size']}"
+
+                if key not in summary:
+                    summary[key] = 0
+
+                summary[key] += m["qty"]
+
+    st.write("📦 ملخص المواد:")
+
+    for k, v in summary.items():
+        if "كيبل" in k:
+            st.write(f"{k}: {v} متر")
+        else:
+            st.write(f"{k}: {v} عدد")
+        
