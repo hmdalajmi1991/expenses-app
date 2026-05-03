@@ -60,7 +60,7 @@ with tab1:
     st.subheader("➕ إضافة تقرير جديد")
 
     with st.form("add_report_form", clear_on_submit=True):
-        whatsapp_text = st.text_area("📋 رسالة القروب", height=140)
+        whatsapp_text = st.text_area("📋 الاعمال المنجزه ", height=140)
 
         st.write("📦 الكيابل")
         c_cols = st.columns(4)
