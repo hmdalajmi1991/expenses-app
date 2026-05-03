@@ -4,105 +4,140 @@ import json
 
 st.set_page_config(page_title="نظام الأعطال", page_icon="⚡")
 
-st.title("⚡ نظام تسجيل الأعطال")
+st.title("⚡ تسجيل عطل سريع")
 
+# تحميل البيانات
 def load_data():
     try:
-        with open("data.json", "r", encoding="utf-8") as f:
+        with open("data.json", "r") as f:
             return json.load(f)
     except:
         return []
 
 def save_data(data):
-    with open("data.json", "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False)
+    with open("data.json", "w") as f:
+        json.dump(data, f)
 
 data = load_data()
 
-st.subheader("➕ إضافة بلاغ")
+st.subheader("📋 رسالة القروب (اختياري)")
+raw_text = st.text_area("", height=100)
 
-raw_text = st.text_area("📋 رسالة القروب")
+st.subheader("📦 المواد المستخدمة")
 
-st.write("📦 المواد المستخدمة:")
+# --------- الكيابل ----------
+st.write("🔌 الكيابل")
 
-c300 = st.number_input("كيبل 300 (متر)", min_value=0)
-c240 = st.number_input("كيبل 240 (متر)", min_value=0)
-c185 = st.number_input("كيبل 185 (متر)", min_value=0)
-c35 = st.number_input("كيبل 35 (متر)", min_value=0)
+col1, col2, col3 = st.columns(3)
+with col1:
+    c300_count = st.number_input("300 عدد", min_value=0)
+    c300_meter = st.number_input("300 متر", min_value=0)
 
-straight = st.number_input("ستريت جوينت", min_value=0)
-t_joint = st.number_input("تي جوينت", min_value=0)
-boot = st.number_input("بوت اند", min_value=0)
+with col2:
+    c240_count = st.number_input("240 عدد", min_value=0)
+    c240_meter = st.number_input("240 متر", min_value=0)
 
+with col3:
+    c150_count = st.number_input("150 عدد", min_value=0)
+    c150_meter = st.number_input("150 متر", min_value=0)
+
+col4, col5 = st.columns(2)
+with col4:
+    c35_count = st.number_input("35 عدد", min_value=0)
+    c35_meter = st.number_input("35 متر", min_value=0)
+
+# --------- الوصلات ----------
+st.write("🔩 الوصلات (S/J)")
+
+col6, col7, col8 = st.columns(3)
+with col6:
+    sj_300_300 = st.number_input("S/J 300-300", min_value=0)
+    sj_300_150 = st.number_input("S/J 300-150", min_value=0)
+
+with col7:
+    sj_150_150 = st.number_input("S/J 150-150", min_value=0)
+    sj_150_35 = st.number_input("S/J 150-35", min_value=0)
+
+with col8:
+    sj_35_35 = st.number_input("S/J 35-35", min_value=0)
+
+# --------- بوت ----------
+st.write("🧩 البوت اند")
+
+boot_300 = st.number_input("Boot End 300", min_value=0)
+
+# --------- حفظ ----------
 if st.button("💾 حفظ البلاغ"):
+
     entry = {
-        "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "date": datetime.now().strftime("%Y-%m-%d"),
         "text": raw_text,
         "materials": {
-            "300": c300,
-            "240": c240,
-            "185": c185,
-            "35": c35,
-            "straight": straight,
-            "t_joint": t_joint,
-            "boot": boot
+            "cables": {
+                "300": {"count": c300_count, "meter": c300_meter},
+                "240": {"count": c240_count, "meter": c240_meter},
+                "150": {"count": c150_count, "meter": c150_meter},
+                "35": {"count": c35_count, "meter": c35_meter}
+            },
+            "sj": {
+                "300-300": sj_300_300,
+                "300-150": sj_300_150,
+                "150-150": sj_150_150,
+                "150-35": sj_150_35,
+                "35-35": sj_35_35
+            },
+            "boot": boot_300
         }
     }
 
     data.append(entry)
     save_data(data)
-    st.success("تم حفظ البلاغ ✅")
 
+    st.success("تم الحفظ ✅")
+
+# --------- تقرير ----------
 st.subheader("📊 تقرير شهري")
 
-month = st.text_input("اكتب رقم الشهر مثال: 05")
+month = st.text_input("رقم الشهر مثال: 05")
 
-if st.button("📈 عرض تقرير الشهر"):
+if st.button("📈 تحليل الشهر"):
+
     total = {
-        "300": 0,
-        "240": 0,
-        "185": 0,
-        "35": 0,
-        "straight": 0,
-        "t_joint": 0,
-        "boot": 0
+        "cables": {
+            "300": {"count":0, "meter":0},
+            "240": {"count":0, "meter":0},
+            "150": {"count":0, "meter":0},
+            "35": {"count":0, "meter":0}
+        },
+        "sj": {
+            "300-300":0,
+            "300-150":0,
+            "150-150":0,
+            "150-35":0,
+            "35-35":0
+        },
+        "boot":0
     }
-
-    month_reports = []
 
     for d in data:
         if f"-{month}-" in d["date"]:
-            month_reports.append(d)
             m = d["materials"]
 
-            for k in total:
-                total[k] += m.get(k, 0)
+            for k in total["cables"]:
+                total["cables"][k]["count"] += m["cables"][k]["count"]
+                total["cables"][k]["meter"] += m["cables"][k]["meter"]
 
-    st.subheader("📦 ملخص المواد للشهر")
+            for k in total["sj"]:
+                total["sj"][k] += m["sj"][k]
 
-    st.write(f"كيبل 300: {total['300']} متر")
-    st.write(f"كيبل 240: {total['240']} متر")
-    st.write(f"كيبل 185: {total['185']} متر")
-    st.write(f"كيبل 35: {total['35']} متر")
-    st.write(f"ستريت جوينت: {total['straight']} عدد")
-    st.write(f"تي جوينت: {total['t_joint']} عدد")
-    st.write(f"بوت اند: {total['boot']} عدد")
+            total["boot"] += m["boot"]
 
-    st.subheader("📋 البلاغات المحفوظة خلال الشهر")
+    st.subheader("📦 ملخص المواد")
 
-    if len(month_reports) == 0:
-        st.info("لا توجد بلاغات محفوظة لهذا الشهر")
-    else:
-        for i, r in enumerate(month_reports, start=1):
-            with st.expander(f"بلاغ {i} - {r['date']}"):
-                st.write("📋 رسالة القروب:")
-                st.write(r["text"])
+    for k in total["cables"]:
+        st.write(f"كيبل {k}: {total['cables'][k]['meter']} متر / {total['cables'][k]['count']} عدد")
 
-                st.write("📦 المواد المستخدمة:")
-                st.write(f"كيبل 300: {r['materials'].get('300', 0)} متر")
-                st.write(f"كيبل 240: {r['materials'].get('240', 0)} متر")
-                st.write(f"كيبل 185: {r['materials'].get('185', 0)} متر")
-                st.write(f"كيبل 35: {r['materials'].get('35', 0)} متر")
-                st.write(f"ستريت جوينت: {r['materials'].get('straight', 0)} عدد")
-                st.write(f"تي جوينت: {r['materials'].get('t_joint', 0)} عدد")
-                st.write(f"بوت اند: {r['materials'].get('boot', 0)} عدد")
+    for k in total["sj"]:
+        st.write(f"S/J {k}: {total['sj'][k]}")
+
+    st.write(f"Boot End 300: {total['boot']}")
