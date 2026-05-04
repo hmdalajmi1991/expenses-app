@@ -74,72 +74,84 @@ data = load()
 
 tab1,tab2,tab3 = st.tabs(["➕ إضافة","📁 يومي","📊 شهري"])
 
-# ================= إضافة =================
-with tab1:
-    with st.form("form",clear_on_submit=True):
+# ================= التقرير الشهري =================
+with tab3:
+    st.subheader("📊 التقارير الشهرية")
 
-        st.markdown("### 📍 الموقع")
-        location=st.text_input("")
+    MONTHS = {
+        "01":"يناير","02":"فبراير","03":"مارس","04":"ابريل",
+        "05":"مايو","06":"يونيو","07":"يوليو","08":"اغسطس",
+        "09":"سبتمبر","10":"اكتوبر","11":"نوفمبر","12":"ديسمبر"
+    }
 
-        st.markdown("### ⚡ بيانات المحطة")
-        station=st.text_input(" ")
+    year_total = empty_total()
 
-        st.markdown("### 🛠️ الأعمال")
-        work=st.text_area("  ")
+    for m in MONTHS:
+        month_reports = [r for r in data if f"-{m}-" in r.get("date","")]
 
-        st.markdown("### 📝 ملاحظات")
-        notes=st.text_area("   ")
+        if not month_reports:
+            continue
 
-        st.markdown("### 📦 المواد")
+        month_total = empty_total()
 
-        cols=st.columns(4)
-        cables={}
-        for i,c in enumerate(CABLES):
-            with cols[i]:
-                cables[c]={
-                    "count":st.number_input(f"{c} عدد",0,key=f"c{c}"),
-                    "meter":st.number_input(f"{c} متر",0,key=f"m{c}")
-                }
+        for r in month_reports:
+            add_to_total(month_total, r.get("materials", {}))
+            add_to_total(year_total, r.get("materials", {}))
 
-        cols2=st.columns(5)
-        sj={}
-        for i,s in enumerate(SJ_TYPES):
-            with cols2[i]:
-                sj[s]=st.number_input(s,0,key=f"sj{s}")
+        with st.expander(f"📅 تقارير شهر {MONTHS[m]}"):
 
-        cols3=st.columns(3)
-        tj={}
-        for i,t in enumerate(TJ_TYPES):
-            with cols3[i]:
-                tj[t]=st.number_input(t,0,key=f"tj{t}")
+            # 🔥 مربع ملخص الشهر (فوق)
+            st.markdown("### 📦 مواد الشهر")
 
-        boot=st.number_input("Boot End 300",0)
-        inspect=st.number_input("عدد الفحص",0)
+            for c in CABLES:
+                st.write(f"كيبل {c}: {month_total['cables'][c]['count']} عدد / {month_total['cables'][c]['meter']} متر")
 
-        submit=st.form_submit_button("💾 حفظ")
+            for s in SJ_TYPES:
+                st.write(f"S/J {s}: {month_total['sj'][s]} عدد")
 
-    if submit:
-        now=datetime.now()
-        data.append({
-            "id":str(uuid.uuid4()),
-            "no":len(data)+1,
-            "date":now.strftime("%Y-%m-%d"),
-            "time":now.strftime("%H:%M"),
-            "location":location,
-            "station":station,
-            "work":work,
-            "notes":notes,
-            "materials":{
-                "cables":cables,
-                "sj":sj,
-                "tj":tj,
-                "boot":int(boot),
-                "inspection":int(inspect)
-            }
-        })
-        save(data)
-        st.success("تم الحفظ")
+            for t in TJ_TYPES:
+                st.write(f"T/J {t}: {month_total['tj'][t]} عدد")
 
+            st.write(f"Boot End 300: {month_total['boot']} عدد")
+            st.write(f"عدد الفحص: {month_total['inspection']}")
+
+            st.markdown("---")
+
+            # 🔥 التقارير (نفس اليومي)
+            for r in month_reports:
+                with st.expander(f"تقرير {r.get('no','?')} - {r.get('time','')}"):
+
+                    st.write("📍 الموقع:")
+                    st.write(r.get("location",""))
+
+                    st.write("⚡ بيانات المحطة:")
+                    st.write(r.get("station",""))
+
+                    st.write("🛠️ الأعمال:")
+                    st.write(r.get("work",""))
+
+                    st.write("📝 ملاحظات:")
+                    st.write(r.get("notes",""))
+
+                    st.write("📦 المواد:")
+                    render_materials(r.get("materials",{}))
+
+    st.markdown("---")
+
+    # 🔥 مجموع السنة (تحت)
+    st.markdown("## 📊 مجموع المواد خلال السنة")
+
+    for c in CABLES:
+        st.write(f"كيبل {c}: {year_total['cables'][c]['count']} عدد / {year_total['cables'][c]['meter']} متر")
+
+    for s in SJ_TYPES:
+        st.write(f"S/J {s}: {year_total['sj'][s]} عدد")
+
+    for t in TJ_TYPES:
+        st.write(f"T/J {t}: {year_total['tj'][t]} عدد")
+
+    st.write(f"Boot End 300: {year_total['boot']} عدد")
+    st.write(f"عدد الفحص: {year_total['inspection']}")
 # ================= يومي =================
 with tab2:
     days=sorted(set(d["date"] for d in data),reverse=True)
