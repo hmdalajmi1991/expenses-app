@@ -18,356 +18,175 @@ st.title("⚡ نظام تقارير الأعطال")
 
 DATA_FILE = "data.json"
 
-CABLES = ["300", "240", "150", "35"]
-SJ_TYPES = ["300-300", "300-150", "150-150", "150-35", "35-35"]
-TJ_TYPES = ["300-300", "300-150", "300-35"]
+CABLES = ["300","240","150","35"]
+SJ_TYPES = ["300-300","300-150","150-150","150-35","35-35"]
+TJ_TYPES = ["300-300","300-150","300-35"]
 
-def load_data():
+MONTHS = {
+    "01":"يناير","02":"فبراير","03":"مارس","04":"ابريل",
+    "05":"مايو","06":"يونيو","07":"يوليو","08":"اغسطس",
+    "09":"سبتمبر","10":"اكتوبر","11":"نوفمبر","12":"ديسمبر"
+}
+
+def load():
     try:
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return data if isinstance(data, list) else []
+        with open(DATA_FILE,"r",encoding="utf-8") as f:
+            return json.load(f)
     except:
         return []
 
-def save_data(data):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+def save(d):
+    with open(DATA_FILE,"w",encoding="utf-8") as f:
+        json.dump(d,f,ensure_ascii=False,indent=2)
 
 def empty_total():
     return {
-        "cables": {c: {"count": 0, "meter": 0} for c in CABLES},
-        "sj": {s: 0 for s in SJ_TYPES},
-        "tj": {t: 0 for t in TJ_TYPES},
-        "boot": 0,
-        "inspection": 0
+        "cables":{c:{"count":0,"meter":0} for c in CABLES},
+        "sj":{s:0 for s in SJ_TYPES},
+        "tj":{t:0 for t in TJ_TYPES},
+        "boot":0,
+        "inspection":0
     }
 
-def normalize_materials(m):
-    base = empty_total()
-
-    if not isinstance(m, dict):
-        return base
-
-    if "cables" in m:
-        for c in CABLES:
-            old = m.get("cables", {}).get(c, {})
-            base["cables"][c]["count"] = int(old.get("count", 0))
-            base["cables"][c]["meter"] = int(old.get("meter", 0))
-
-    if "sj" in m:
-        for s in SJ_TYPES:
-            base["sj"][s] = int(m.get("sj", {}).get(s, 0))
-
-    if "tj" in m:
-        for t in TJ_TYPES:
-            base["tj"][t] = int(m.get("tj", {}).get(t, 0))
-
-    base["boot"] = int(m.get("boot", m.get("boot_300", 0)))
-    base["inspection"] = int(m.get("inspection", m.get("inspect", m.get("inspection_count", 0))))
-
-    return base
-
-def add_to_total(total, m):
-    m = normalize_materials(m)
-
+def add_total(total,m):
     for c in CABLES:
-        total["cables"][c]["count"] += m["cables"][c]["count"]
-        total["cables"][c]["meter"] += m["cables"][c]["meter"]
-
+        total["cables"][c]["count"]+=m["cables"][c]["count"]
+        total["cables"][c]["meter"]+=m["cables"][c]["meter"]
     for s in SJ_TYPES:
-        total["sj"][s] += m["sj"][s]
-
+        total["sj"][s]+=m["sj"][s]
     for t in TJ_TYPES:
-        total["tj"][t] += m["tj"][t]
+        total["tj"][t]+=m["tj"][t]
+    total["boot"]+=m["boot"]
+    total["inspection"]+=m["inspection"]
 
-    total["boot"] += m["boot"]
-    total["inspection"] += m["inspection"]
-
-def render_materials(m):
-    m = normalize_materials(m)
-
-    st.markdown("#### 🔌 الكيابل")
+def show_total(total,title):
+    st.markdown(f"### 📦 {title}")
     for c in CABLES:
-        count = m["cables"][c]["count"]
-        meter = m["cables"][c]["meter"]
-        if count > 0 or meter > 0:
-            st.write(f"كيبل {c}: {count} عدد / {meter} متر")
-
-    st.markdown("#### 🔩 S/J")
+        st.write(f"كيبل {c}: {total['cables'][c]['count']} / {total['cables'][c]['meter']} متر")
     for s in SJ_TYPES:
-        if m["sj"][s] > 0:
-            st.write(f"S/J {s}: {m['sj'][s]} عدد")
-
-    st.markdown("#### 🔧 T/J")
+        st.write(f"S/J {s}: {total['sj'][s]}")
     for t in TJ_TYPES:
-        if m["tj"][t] > 0:
-            st.write(f"T/J {t}: {m['tj'][t]} عدد")
+        st.write(f"T/J {t}: {total['tj'][t]}")
+    st.write("Boot:",total["boot"])
+    st.write("فحص:",total["inspection"])
 
-    st.markdown("#### 🧩 Boot End / الفحص")
-    if m["boot"] > 0:
-        st.write(f"Boot End 300: {m['boot']} عدد")
-    if m["inspection"] > 0:
-        st.write(f"عدد الفحص: {m['inspection']}")
+data = load()
 
-data = load_data()
+tab1,tab2,tab3 = st.tabs(["➕ إضافة","📁 يومي","📊 شهري"])
 
-tab1, tab2, tab3 = st.tabs(["➕ إضافة تقرير", "📁 التقارير اليومية", "📊 التقرير الشهري"])
-
-# ================= إضافة تقرير =================
+# ================= إضافة =================
 with tab1:
-    st.subheader("➕ إضافة تقرير جديد")
+    with st.form("form",clear_on_submit=True):
 
-    with st.form("add_report_form", clear_on_submit=True):
         st.markdown("### 📍 الموقع")
-        location = st.text_input("الموقع")
+        location=st.text_input("")
 
         st.markdown("### ⚡ بيانات المحطة")
-        station = st.text_input("بيانات المحطة")
+        station=st.text_input(" ")
 
-        st.markdown("### 🛠️ الأعمال المنجزة")
-        work = st.text_area("الأعمال المنجزة")
+        st.markdown("### 🛠️ الأعمال")
+        work=st.text_area("  ")
 
         st.markdown("### 📝 ملاحظات")
-        notes = st.text_area("ملاحظات")
+        notes=st.text_area("   ")
 
-        st.markdown("### 📦 المواد المستخدمة")
+        st.markdown("### 📦 المواد")
 
-        st.write("🔌 الكيابل")
-        cable_cols = st.columns(4)
-        cables = {}
+        cols=st.columns(4)
+        cables={}
+        for i,c in enumerate(CABLES):
+            with cols[i]:
+                cables[c]={
+                    "count":st.number_input(f"{c} عدد",0,key=f"c{c}"),
+                    "meter":st.number_input(f"{c} متر",0,key=f"m{c}")
+                }
 
-        for i, c in enumerate(CABLES):
-            with cable_cols[i]:
-                count = st.number_input(f"كيبل {c} - عدد", min_value=0, step=1, key=f"add_c_count_{c}")
-                meter = st.number_input(f"كيبل {c} - متر", min_value=0, step=1, key=f"add_c_meter_{c}")
-                cables[c] = {"count": int(count), "meter": int(meter)}
+        cols2=st.columns(5)
+        sj={}
+        for i,s in enumerate(SJ_TYPES):
+            with cols2[i]:
+                sj[s]=st.number_input(s,0,key=f"sj{s}")
 
-        st.write("🔩 S/J")
-        sj_cols = st.columns(5)
-        sj = {}
+        cols3=st.columns(3)
+        tj={}
+        for i,t in enumerate(TJ_TYPES):
+            with cols3[i]:
+                tj[t]=st.number_input(t,0,key=f"tj{t}")
 
-        for i, s in enumerate(SJ_TYPES):
-            with sj_cols[i]:
-                qty = st.number_input(f"S/J {s}", min_value=0, step=1, key=f"add_sj_{s}")
-                sj[s] = int(qty)
+        boot=st.number_input("Boot End 300",0)
+        inspect=st.number_input("عدد الفحص",0)
 
-        st.write("🔧 T/J")
-        tj_cols = st.columns(3)
-        tj = {}
+        submit=st.form_submit_button("💾 حفظ")
 
-        for i, t in enumerate(TJ_TYPES):
-            with tj_cols[i]:
-                qty = st.number_input(f"T/J {t}", min_value=0, step=1, key=f"add_tj_{t}")
-                tj[t] = int(qty)
-
-        st.write("🧩 Boot End / الفحص")
-        col1, col2 = st.columns(2)
-        with col1:
-            boot = st.number_input("Boot End 300", min_value=0, step=1)
-        with col2:
-            inspection = st.number_input("عدد الفحص", min_value=0, step=1)
-
-        submitted = st.form_submit_button("💾 حفظ التقرير")
-
-    if submitted:
-        now = datetime.now()
-
-        report = {
-            "id": str(uuid.uuid4()),
-            "no": len(data) + 1,
-            "date": now.strftime("%Y-%m-%d"),
-            "time": now.strftime("%H:%M"),
-            "datetime": now.strftime("%Y-%m-%d %H:%M"),
-            "location": location,
-            "station": station,
-            "work": work,
-            "notes": notes,
-            "materials": {
-                "cables": cables,
-                "sj": sj,
-                "tj": tj,
-                "boot": int(boot),
-                "inspection": int(inspection)
+    if submit:
+        now=datetime.now()
+        data.append({
+            "id":str(uuid.uuid4()),
+            "no":len(data)+1,
+            "date":now.strftime("%Y-%m-%d"),
+            "time":now.strftime("%H:%M"),
+            "location":location,
+            "station":station,
+            "work":work,
+            "notes":notes,
+            "materials":{
+                "cables":cables,
+                "sj":sj,
+                "tj":tj,
+                "boot":int(boot),
+                "inspection":int(inspect)
             }
-        }
+        })
+        save(data)
+        st.success("تم الحفظ")
 
-        data.append(report)
-        save_data(data)
-        st.success("تم حفظ التقرير ✅")
-
-# ================= التقارير اليومية =================
+# ================= يومي =================
 with tab2:
-    st.subheader("📁 التقارير اليومية")
+    days=sorted(set(d["date"] for d in data),reverse=True)
 
-    if not data:
-        st.info("لا توجد تقارير محفوظة")
-    else:
-        days = sorted(set(r.get("date", "") for r in data), reverse=True)
+    for day in days:
+        st.markdown(f"## 📅 {day}")
+        for r in [x for x in data if x["date"]==day]:
+            with st.expander(f"تقرير {r['no']} - {r['time']}"):
+                st.write(r["location"])
+                st.write(r["station"])
+                st.write(r["work"])
+                st.write(r["notes"])
 
-        for day in days:
-            st.markdown(f"## 📅 {day}")
-
-            for r in [x for x in data if x.get("date") == day]:
-                title = f"تقرير رقم {r.get('no', '?')} - {r.get('time', '')}"
-
-                with st.expander(title):
-                    st.write("📍 الموقع:")
-                    st.write(r.get("location", ""))
-
-                    st.write("⚡ بيانات المحطة:")
-                    st.write(r.get("station", ""))
-
-                    st.write("🛠️ الأعمال المنجزة:")
-                    st.write(r.get("work", ""))
-
-                    st.write("📝 ملاحظات:")
-                    st.write(r.get("notes", ""))
-
-                    st.write("📦 المواد:")
-                    render_materials(r.get("materials", {}))
-
-                    st.markdown("---")
-                    st.markdown("### ✏️ تعديل التقرير")
-
-                    with st.form(f"edit_form_{r['id']}"):
-                        new_location = st.text_input("الموقع", r.get("location", ""), key=f"edit_loc_{r['id']}")
-                        new_station = st.text_input("بيانات المحطة", r.get("station", ""), key=f"edit_station_{r['id']}")
-                        new_work = st.text_area("الأعمال المنجزة", r.get("work", ""), key=f"edit_work_{r['id']}")
-                        new_notes = st.text_area("ملاحظات", r.get("notes", ""), key=f"edit_notes_{r['id']}")
-
-                        old_m = normalize_materials(r.get("materials", {}))
-
-                        st.write("🔌 الكيابل")
-                        edit_cable_cols = st.columns(4)
-                        edit_cables = {}
-
-                        for i, c in enumerate(CABLES):
-                            with edit_cable_cols[i]:
-                                count = st.number_input(
-                                    f"كيبل {c} - عدد",
-                                    min_value=0,
-                                    value=int(old_m["cables"][c]["count"]),
-                                    step=1,
-                                    key=f"edit_c_count_{r['id']}_{c}"
-                                )
-                                meter = st.number_input(
-                                    f"كيبل {c} - متر",
-                                    min_value=0,
-                                    value=int(old_m["cables"][c]["meter"]),
-                                    step=1,
-                                    key=f"edit_c_meter_{r['id']}_{c}"
-                                )
-                                edit_cables[c] = {"count": int(count), "meter": int(meter)}
-
-                        st.write("🔩 S/J")
-                        edit_sj_cols = st.columns(5)
-                        edit_sj = {}
-
-                        for i, s in enumerate(SJ_TYPES):
-                            with edit_sj_cols[i]:
-                                qty = st.number_input(
-                                    f"S/J {s}",
-                                    min_value=0,
-                                    value=int(old_m["sj"][s]),
-                                    step=1,
-                                    key=f"edit_sj_{r['id']}_{s}"
-                                )
-                                edit_sj[s] = int(qty)
-
-                        st.write("🔧 T/J")
-                        edit_tj_cols = st.columns(3)
-                        edit_tj = {}
-
-                        for i, t in enumerate(TJ_TYPES):
-                            with edit_tj_cols[i]:
-                                qty = st.number_input(
-                                    f"T/J {t}",
-                                    min_value=0,
-                                    value=int(old_m["tj"][t]),
-                                    step=1,
-                                    key=f"edit_tj_{r['id']}_{t}"
-                                )
-                                edit_tj[t] = int(qty)
-
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            new_boot = st.number_input(
-                                "Boot End 300",
-                                min_value=0,
-                                value=int(old_m["boot"]),
-                                step=1,
-                                key=f"edit_boot_{r['id']}"
-                            )
-                        with col2:
-                            new_inspection = st.number_input(
-                                "عدد الفحص",
-                                min_value=0,
-                                value=int(old_m["inspection"]),
-                                step=1,
-                                key=f"edit_inspection_{r['id']}"
-                            )
-
-                        save_edit = st.form_submit_button("💾 حفظ التعديل")
-
-                    if save_edit:
-                        for idx, item in enumerate(data):
-                            if item["id"] == r["id"]:
-                                data[idx]["location"] = new_location
-                                data[idx]["station"] = new_station
-                                data[idx]["work"] = new_work
-                                data[idx]["notes"] = new_notes
-                                data[idx]["materials"] = {
-                                    "cables": edit_cables,
-                                    "sj": edit_sj,
-                                    "tj": edit_tj,
-                                    "boot": int(new_boot),
-                                    "inspection": int(new_inspection)
-                                }
-
-                        save_data(data)
-                        st.success("تم تعديل التقرير ✅")
-                        st.rerun()
-
-                    if st.button(f"🗑️ حذف تقرير رقم {r.get('no', '?')}", key=f"delete_{r['id']}"):
-                        data = [x for x in data if x["id"] != r["id"]]
-                        save_data(data)
-                        st.success("تم حذف التقرير ✅")
-                        st.rerun()
-
-# ================= التقرير الشهري =================
+# ================= شهري =================
 with tab3:
-    st.subheader("📊 مجموع المواد المستهلكة خلال الشهر")
 
-    month = st.text_input("اكتب رقم الشهر مثال: 05")
+    year_total=empty_total()
 
-    if st.button("📈 عرض التقرير الشهري"):
-        total = empty_total()
-        month_reports = []
+    for m in MONTHS:
 
-        for r in data:
-            if f"-{month}-" in r.get("date", ""):
-                month_reports.append(r)
-                add_to_total(total, r.get("materials", {}))
+        month_reports=[r for r in data if f"-{m}-" in r["date"]]
 
-        st.write(f"عدد التقارير في الشهر: {len(month_reports)}")
+        if not month_reports:
+            continue
 
-        st.markdown("## 🔌 إجمالي الكيابل")
-        for c in CABLES:
-            st.write(f"كيبل {c}: {total['cables'][c]['count']} عدد / {total['cables'][c]['meter']} متر")
+        month_total=empty_total()
 
-        st.markdown("## 🔩 إجمالي S/J")
-        for s in SJ_TYPES:
-            st.write(f"S/J {s}: {total['sj'][s]} عدد")
-
-        st.markdown("## 🔧 إجمالي T/J")
-        for t in TJ_TYPES:
-            st.write(f"T/J {t}: {total['tj'][t]} عدد")
-
-        st.markdown("## 🧩 Boot End / الفحص")
-        st.write(f"Boot End 300: {total['boot']} عدد")
-        st.write(f"عدد الفحص: {total['inspection']}")
-
-        st.markdown("## 📋 تقارير هذا الشهر")
         for r in month_reports:
-            st.write(f"- تقرير رقم {r.get('no', '?')} | {r.get('datetime', r.get('date', ''))}")
+            add_total(month_total,r["materials"])
+            add_total(year_total,r["materials"])
+
+        with st.expander(f"📅 تقارير شهر {MONTHS[m]}"):
+
+            # 🔥 مربع ملخص الشهر فوق
+            show_total(month_total,"مواد الشهر")
+
+            st.markdown("---")
+
+            # 🔥 التقارير
+            for r in month_reports:
+                with st.expander(f"تقرير {r['no']} - {r['time']}"):
+                    st.write(r["location"])
+                    st.write(r["station"])
+                    st.write(r["work"])
+                    st.write(r["notes"])
+
+    st.markdown("---")
+
+    # 🔥 مربع السنة بالنهاية
+    show_total(year_total,"مجموع السنة")
